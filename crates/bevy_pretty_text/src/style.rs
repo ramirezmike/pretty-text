@@ -183,7 +183,7 @@ impl Plugin for StylePlugin {
 /// ));
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Component, Reflect)]
-#[component(immutable, on_add = register, on_remove = unregister, on_replace = replace)]
+#[component(immutable, on_add = register, on_remove = unregister, on_discard = replace)]
 pub struct PrettyStyle(pub &'static str);
 
 impl AsRef<str> for PrettyStyle {

@@ -8,16 +8,15 @@ pub struct PrettyBoxPlugin;
 
 impl Plugin for PrettyBoxPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<TextboxAdvance>()
-            .add_plugins((
-                bevy_pretty_text::PrettyTextPlugin,
-                bevy_sequence::SequencePlugin,
-            ))
-            .add_event::<FragmentEvent<PrettySequence>>()
-            .add_systems(
-                Update,
-                (textbox_handler, tick_pauses, sequence_runner).chain(),
-            );
+        app.add_plugins((
+            bevy_pretty_text::PrettyTextPlugin,
+            bevy_sequence::SequencePlugin,
+        ))
+        .add_message::<FragmentEvent<PrettySequence>>()
+        .add_systems(
+            Update,
+            (textbox_handler, tick_pauses, sequence_runner).chain(),
+        );
 
         app.register_type::<TextboxContainer>()
             .register_type::<TextboxName>()
@@ -47,8 +46,11 @@ pub struct TextboxContainer;
 #[require(Name::new("Textbox Continue"))]
 pub struct TextboxContinue;
 
-#[derive(Debug, Default, Clone, Copy, Event, Reflect)]
-pub struct TextboxAdvance;
+#[derive(Debug, Clone, Copy, EntityEvent, Reflect)]
+pub struct TextboxAdvance {
+    /// The textbox container entity that advanced.
+    pub entity: Entity,
+}
 
 fn textbox_handler(
     mut commands: Commands,
@@ -56,7 +58,7 @@ fn textbox_handler(
     textbox: Single<(Entity, &Textbox, Has<Typewriter>)>,
     tcontinue: Option<Single<Entity, With<TextboxContinue>>>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut end_events: EventWriter<FragmentEndEvent>,
+    mut end_events: MessageWriter<FragmentEndEvent>,
 ) {
     if !keys.just_pressed(KeyCode::Space) {
         return;
@@ -72,7 +74,9 @@ fn textbox_handler(
         if let Some(tcontinue) = tcontinue {
             commands.entity(*tcontinue).despawn();
         }
-        commands.entity(*container).trigger(TextboxAdvance);
+        commands
+            .entity(*container)
+            .trigger(|entity| TextboxAdvance { entity });
     }
 }
 
@@ -84,7 +88,7 @@ struct SequencePause {
 
 fn tick_pauses(
     mut pauses: Query<(Entity, &mut SequencePause)>,
-    mut end_events: EventWriter<FragmentEndEvent>,
+    mut end_events: MessageWriter<FragmentEndEvent>,
     time: Res<Time>,
     mut commands: Commands,
 ) {
@@ -138,7 +142,7 @@ pub fn despawn_textbox(
 }
 
 fn sequence_runner(
-    mut start_events: EventReader<FragmentEvent<PrettySequence>>,
+    mut start_events: MessageReader<FragmentEvent<PrettySequence>>,
     container: Option<Single<Entity, With<TextboxContainer>>>,
     mut commands: Commands,
 ) -> Result {
@@ -174,11 +178,9 @@ fn sequence_runner(
                         bundle.clone().into_bundle(),
                         ChildOf(container),
                     ))
-                    .observe(
-                        move |_: Trigger<TypewriterFinished>, mut commands: Commands| {
-                            commands.entity(container).with_child(TextboxContinue);
-                        },
-                    );
+                    .observe(move |_: On<TypewriterFinished>, mut commands: Commands| {
+                        commands.entity(container).with_child(TextboxContinue);
+                    });
             }
             PrettySequence::Text(text) => {
                 let container = container
@@ -200,11 +202,9 @@ fn sequence_runner(
                         PrettyParser2d::bundle(text)?,
                         ChildOf(container),
                     ))
-                    .observe(
-                        move |_: Trigger<TypewriterFinished>, mut commands: Commands| {
-                            commands.entity(container).with_child(TextboxContinue);
-                        },
-                    );
+                    .observe(move |_: On<TypewriterFinished>, mut commands: Commands| {
+                        commands.entity(container).with_child(TextboxContinue);
+                    });
             }
         }
     }

@@ -9,7 +9,7 @@ use rand::Rng;
 use crate::PrettyText;
 use crate::effects::dynamic::PrettyTextEffectAppExt;
 use crate::effects::{EffectQuery, PrettyEffectSystems, mark_effect_glyphs};
-use crate::glyph::{Glyph, SpanGlyphOf};
+use crate::glyph::{Glyph, SpanGlyphOf, glyph_metas};
 use crate::parser::{ArgParser, duration_secs, range, tuple_struct};
 
 use super::Appeared;
@@ -273,15 +273,16 @@ fn scramble(
             // the scamble code in which case stalling here would be annoying
             let max_depth = 10;
             let mut depth = 0;
+            let metas = glyph_metas(computed);
             let mut new_glyph;
             loop {
                 if layout.glyphs.is_empty() {
                     continue 'outer;
                 }
 
-                new_glyph = &layout.glyphs[rng.random_range(0..layout.glyphs.len())];
-                let str = computed.buffer().lines[new_glyph.line_index].text();
-                if &str[new_glyph.byte_index..new_glyph.byte_index + new_glyph.byte_length] != " " {
+                let idx = rng.random_range(0..layout.glyphs.len());
+                new_glyph = &layout.glyphs[idx];
+                if !metas.get(idx).is_some_and(|meta| meta.is_whitespace) {
                     break;
                 }
 
@@ -293,8 +294,7 @@ fn scramble(
             }
 
             glyph.0.atlas_info = new_glyph.atlas_info.clone();
-            glyph.0.span_index = new_glyph.span_index;
-            glyph.0.size = new_glyph.size;
+            glyph.0.section_index = new_glyph.section_index;
         }
     }
     Ok(())

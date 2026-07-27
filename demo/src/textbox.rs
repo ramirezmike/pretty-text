@@ -43,7 +43,7 @@ fn textbox_container(
             Transform::from_scale(Vec3::splat(1.5)),
         ))
         .observe(
-            |_: Trigger<TextboxAdvance>, mut commands: Commands, server: Res<AssetServer>| {
+            |_: On<TextboxAdvance>, mut commands: Commands, server: Res<AssetServer>| {
                 commands.spawn(SamplePlayer::new(server.load("page-flip.ogg")));
             },
         );

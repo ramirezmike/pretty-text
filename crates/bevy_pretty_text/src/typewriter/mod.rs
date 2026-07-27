@@ -45,6 +45,7 @@ impl Plugin for TypewriterPlugin {
                         .after(GlyphSystems::Construct),
                     remove_delay,
                 ),
+                restore_reveal,
                 initialize_glyphs,
                 step,
                 start_sequence,
@@ -406,6 +407,51 @@ fn initialize_glyphs(
         commands.entity(entity).remove::<Initialize>();
         for entity in glyphs.iter() {
             commands.entity(entity).remove::<Appeared>();
+        }
+    }
+}
+
+fn restore_reveal(
+    mut commands: Commands,
+    typewriters: Query<(&Typewriter, &TypewriterIndex, &Words, &Glyphs), Changed<Glyphs>>,
+    mut visibility: Query<&mut Visibility>,
+) {
+    for (typewriter, index, words, glyphs) in typewriters.iter() {
+        let collection = glyphs.collection();
+
+        let mut reveal = |glyph: Entity| {
+            commands.entity(glyph).insert(Appeared(f32::MAX));
+            if let Ok(mut vis) = visibility.get_mut(glyph)
+                && *vis != Visibility::Inherited
+            {
+                *vis = Visibility::Inherited;
+            }
+        };
+
+        if typewriter.finished_glyphs {
+            for &glyph in collection.iter() {
+                reveal(glyph);
+            }
+            continue;
+        }
+
+        match *index {
+            // `[0..index)` glyphs have already been revealed (`index` is the next
+            // glyph to reveal).
+            TypewriterIndex::Glyph(index) => {
+                for &glyph in collection.iter().take(index) {
+                    reveal(glyph);
+                }
+            }
+            // Words `[0..index)` have been revealed. Whitespace between words is
+            // never given `Appeared` in word mode, so only restore word glyphs.
+            TypewriterIndex::Word(index) => {
+                for range in words.glyph_ranges().iter().take(index) {
+                    for &glyph in &collection[range.clone()] {
+                        reveal(glyph);
+                    }
+                }
+            }
         }
     }
 }

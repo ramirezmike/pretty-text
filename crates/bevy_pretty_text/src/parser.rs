@@ -184,6 +184,7 @@
 //! or [`Text2d`] component.
 
 use bevy::ptr::MovingPtr;
+use bevy::text::TextSection;
 pub use pretty_text_parser::{
     ArgParser, ParserContext, duration_millis, duration_mins, duration_secs, range, trim,
     tuple_struct,
@@ -195,7 +196,6 @@ use std::ops::Range;
 
 use bevy::ecs::spawn::SpawnableList;
 use bevy::prelude::*;
-use bevy::text::TextRoot;
 use pretty_text_parser::{CommandKind, Item, PrettyParserError};
 
 use crate::PrettyText;
@@ -347,7 +347,7 @@ impl PrettyParser2d {
 }
 
 /// Marks a viable text root. Implemented for [`Text`] and [`Text2d`].
-pub trait Root: std::fmt::Debug + Default + Clone + Reflect + TextRoot + sealed::Sealed {}
+pub trait Root: std::fmt::Debug + Default + Clone + Reflect + TextSection + sealed::Sealed {}
 impl Root for Text {}
 impl Root for Text2d {}
 
